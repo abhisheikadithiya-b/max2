@@ -448,8 +448,8 @@ function triggerProcessing() {
   accumulatedText = ''; // Clear buffer
   
   if (!userPrompt) {
-    console.log('[Active Session]: Empty prompt, returning to idle.');
-    transitionTo('sleeping');
+    console.log('[Active Session]: Empty prompt, resetting timers to continue listening.');
+    resetListeningTimers();
     return;
   }
   
