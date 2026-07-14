@@ -651,7 +651,13 @@ function speakViaTranslateAPI(text, langCode, callback) {
     } catch(e){}
   }
   
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(text)}`;
+  // Use Vercel serverless proxy '/api/tts' when hosted to bypass CORS/Referer blocks.
+  // Fall back to direct Google URL on localhost.
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const url = isLocalhost 
+    ? `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(text)}`
+    : `/api/tts?lang=${langCode}&text=${encodeURIComponent(text)}`;
+    
   const audio = new Audio(url);
   audio.playbackRate = STATE.voiceSpeed;
   
