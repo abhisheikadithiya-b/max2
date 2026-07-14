@@ -287,6 +287,7 @@ function initSpeechEngine() {
   rec.onstart = () => {
     console.log('[Speech Engine]: Microphone active.');
     STATE.recognitionActive = true;
+    STATE.recognitionStartTime = Date.now();
   };
   
   rec.onresult = (event) => {
@@ -388,6 +389,23 @@ function initSpeechEngine() {
     STATE.recognitionActive = false;
     console.log('[Speech Engine]: Connection ended.');
     
+    // Safeguard: Check for immediate rapid restart loops (less than 1.5 seconds)
+    const duration = Date.now() - (STATE.recognitionStartTime || 0);
+    if (duration < 1500) {
+      STATE.consecutiveSpeechFailures = (STATE.consecutiveSpeechFailures || 0) + 1;
+    } else {
+      STATE.consecutiveSpeechFailures = 0;
+    }
+    
+    if (STATE.consecutiveSpeechFailures >= 4) {
+      console.warn('[Speech Engine]: Rapid failure loop detected. Disabling auto-restart.');
+      STATE.micPermissionDenied = true; // Block auto-restarts
+      appendMessage('bot', 'Microphone connection issue detected. Please tap the screen or mic icon to reset.');
+      transitionTo('error');
+      DOM.faceStatusText.innerText = 'SPEECH ERROR';
+      return;
+    }
+    
     // Auto-restart if we are in sleeping/listening state and mic is not blocked
     if (!STATE.micPermissionDenied && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
       console.log('[Speech Engine]: Restarting microphone connection...');
@@ -406,15 +424,13 @@ function initSpeechEngine() {
 function changeRecognitionLanguage(langCode) {
   if (STATE.activeRecognition) {
     console.log(`[Speech Engine]: Changing language to ${langCode}`);
-    try { STATE.activeRecognition.stop(); } catch(e){}
     STATE.activeRecognition.lang = langCode;
     
-    // Restart recognition with new configuration after brief delay
-    setTimeout(() => {
-      if (!STATE.micPermissionDenied && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
-        try { STATE.activeRecognition.start(); } catch(e){}
-      }
-    }, 400);
+    // Stop the current session. The rec.onend handler will automatically
+    // restart the engine with the updated language, preventing overlapping start() race conditions.
+    try { 
+      STATE.activeRecognition.stop(); 
+    } catch(e){}
   }
 }
 
