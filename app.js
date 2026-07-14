@@ -564,19 +564,9 @@ function speakResponseAndContinue(text) {
   else if (/[\u0D00-\u0D7F]/.test(text)) detectedLang = 'ml'; // Malayalam
   
   speakText(text, detectedLang, () => {
-    // Post-speech cooling loop
-    console.log('[Speaking Finished]: Commencing 2 second cooldown.');
-    transitionTo('sleeping'); // Transition visually back to normal
-    DOM.faceStatusText.innerText = 'WAITING... (2s)';
-    DOM.dbStatusInstruction.innerText = 'WAITING... (2s)';
-    
-    STATE.cooldownTimeout = setTimeout(() => {
-      // Repeat the listening loop
-      if (STATE.current === 'sleeping') {
-        console.log('[Cooldown Completed]: Restarting active listening cycle.');
-        startActiveSession();
-      }
-    }, 2000);
+    console.log('[Speaking Finished]: Transitioning back to active listening.');
+    transitionTo('listening');
+    resetListeningTimers();
   });
 }
 
@@ -651,8 +641,12 @@ function handleVoiceToggleBtn() {
   if (STATE.current === 'sleeping' || STATE.current === 'error') {
     // Force start active session
     playChime('start');
-    stopWakeWordListener();
-    startActiveSession();
+    accumulatedText = '';
+    transitionTo('listening');
+    resetListeningTimers();
+    if (!STATE.recognitionActive) {
+      try { STATE.activeRecognition.start(); } catch (e) {}
+    }
   } else {
     // Explicit cancel or stop
     console.log('[Voice Button]: Manual Stop session.');
@@ -671,7 +665,9 @@ function handleVoiceToggleBtn() {
     clearTimeout(STATE.cooldownTimeout);
     
     transitionTo('sleeping');
-    initWakeWordListener();
+    if (!STATE.recognitionActive) {
+      try { STATE.activeRecognition.start(); } catch (e) {}
+    }
   }
 }
 
@@ -695,7 +691,6 @@ function handleManualSend() {
   clearTimeout(STATE.silenceTimeout);
   clearTimeout(STATE.cooldownTimeout);
   
-  stopWakeWordListener();
   processPrompt(prompt);
 }
 
