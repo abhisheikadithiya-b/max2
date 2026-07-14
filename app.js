@@ -51,7 +51,8 @@ const STATE = {
   
   // System variables
   isSpeechActive: false,
-  recognitionActive: false
+  recognitionActive: false,
+  activeAudio: null
 };
 
 // Ensure API key is saved to localStorage if not already there
@@ -300,7 +301,7 @@ function initSpeechEngine() {
       }
     }
     
-    const text = (localFinal || interimTranscript).trim();
+    const text = (localFinal + ' ' + interimTranscript).trim();
     if (!text) return;
     
     const lowerText = text.toLowerCase();
@@ -313,6 +314,9 @@ function initSpeechEngine() {
       console.log('[Speech Engine]: Instant stop command triggered!');
       playChime('stop');
       accumulatedText = '';
+      if (STATE.activeAudio) {
+        try { STATE.activeAudio.pause(); STATE.activeAudio = null; } catch(e){}
+      }
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -444,8 +448,18 @@ function triggerProcessing() {
   clearTimeout(STATE.listeningTimeout);
   clearTimeout(STATE.silenceTimeout);
   
-  const userPrompt = accumulatedText.trim();
+  let userPrompt = accumulatedText.trim();
   accumulatedText = ''; // Clear buffer
+  
+  // Strip wake words from the beginning of the prompt if present
+  const wakeWordsList = WAKE_WORDS[STATE.selectedLang] || WAKE_WORDS.auto;
+  for (const word of wakeWordsList) {
+    const regex = new RegExp(`^${word}\\b`, 'i');
+    if (regex.test(userPrompt)) {
+      userPrompt = userPrompt.replace(regex, '').trim();
+      break;
+    }
+  }
   
   if (!userPrompt) {
     console.log('[Active Session]: Empty prompt, resetting timers to continue listening.');
@@ -628,41 +642,71 @@ function speakResponseAndContinue(text) {
   });
 }
 
-function speakText(text, langKey, callback) {
+function speakViaTranslateAPI(text, langCode, callback) {
+  // Cancel previous audio if any
+  if (STATE.activeAudio) {
+    try {
+      STATE.activeAudio.pause();
+      STATE.activeAudio = null;
+    } catch(e){}
+  }
+  
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(text)}`;
+  const audio = new Audio(url);
+  audio.playbackRate = STATE.voiceSpeed;
+  
+  STATE.activeAudio = audio;
+  STATE.isSpeechActive = true;
+  
+  audio.addEventListener('play', () => {
+    console.log(`[TTS API]: Playing speech in ${langCode}`);
+  });
+  
+  audio.addEventListener('ended', () => {
+    STATE.isSpeechActive = false;
+    STATE.activeAudio = null;
+    if (callback) callback();
+  });
+  
+  audio.addEventListener('error', (e) => {
+    console.error('[TTS API Error]: Failed to play audio via Translate TTS API.', e);
+    STATE.isSpeechActive = false;
+    STATE.activeAudio = null;
+    // Fall back to native TTS
+    speakViaNativeSpeech(text, langCode, callback);
+  });
+  
+  audio.play().catch(err => {
+    console.error('[TTS API Play Blocked]:', err);
+    STATE.isSpeechActive = false;
+    STATE.activeAudio = null;
+    // Fall back to native TTS
+    speakViaNativeSpeech(text, langCode, callback);
+  });
+}
+
+function speakViaNativeSpeech(text, langCode, callback) {
   if (!('speechSynthesis' in window)) {
-    console.warn('Speech Synthesis API is not supported in this browser.');
     if (callback) callback();
     return;
   }
   
-  // Cancel current speech
   window.speechSynthesis.cancel();
   
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = STATE.voiceSpeed;
   utterance.pitch = 1.0;
-  
-  // Find matching voice
-  const langConf = CONFIG.languages[langKey] || CONFIG.languages.auto;
-  const targetCode = langConf.code.toLowerCase();
+  utterance.lang = langCode;
   
   const voices = window.speechSynthesis.getVoices();
-  let matchedVoice = null;
-  
-  // Attempt exact tag match, e.g. "ta-IN"
-  matchedVoice = voices.find(voice => voice.lang.toLowerCase() === targetCode);
-  
-  // Fallback to language prefix, e.g. "ta"
+  let matchedVoice = voices.find(voice => voice.lang.toLowerCase() === langCode.toLowerCase());
   if (!matchedVoice) {
-    const langPrefix = targetCode.split('-')[0];
-    matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(langPrefix));
+    const prefix = langCode.split('-')[0];
+    matchedVoice = voices.find(voice => voice.lang.toLowerCase().startsWith(prefix));
   }
   
   if (matchedVoice) {
     utterance.voice = matchedVoice;
-    console.log(`[TTS]: Speaking with voice: ${matchedVoice.name} (${matchedVoice.lang})`);
-  } else {
-    console.log(`[TTS]: No specific voice found for language ${langConf.name}. Using default voice.`);
   }
   
   utterance.onstart = () => {
@@ -675,12 +719,37 @@ function speakText(text, langKey, callback) {
   };
   
   utterance.onerror = (e) => {
-    console.error('[TTS Speech Error]:', e);
+    console.error('[Native TTS Error]:', e);
     STATE.isSpeechActive = false;
     if (callback) callback();
   };
   
   window.speechSynthesis.speak(utterance);
+}
+
+function speakText(text, langKey, callback) {
+  const langConf = CONFIG.languages[langKey] || CONFIG.languages.auto;
+  const targetCode = langConf.code;
+  const langPrefix = targetCode.split('-')[0];
+  
+  // Cancel native speech if running
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  
+  // Cancel active HTML5 audio if running
+  if (STATE.activeAudio) {
+    try {
+      STATE.activeAudio.pause();
+      STATE.activeAudio = null;
+    } catch(e){}
+  }
+  
+  if (langPrefix === 'en') {
+    speakViaNativeSpeech(text, targetCode, callback);
+  } else {
+    speakViaTranslateAPI(text, langPrefix, callback);
+  }
 }
 
 // Pre-load voices on browser compatibility triggers
@@ -714,6 +783,9 @@ function handleVoiceToggleBtn() {
     if (STATE.activeRecognition) {
       try { STATE.activeRecognition.stop(); } catch(e) {}
     }
+    if (STATE.activeAudio) {
+      try { STATE.activeAudio.pause(); STATE.activeAudio = null; } catch(e){}
+    }
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -740,6 +812,9 @@ function handleManualSend() {
   // Stop active listening/speech if running
   if (STATE.activeRecognition) {
     try { STATE.activeRecognition.stop(); } catch(e) {}
+  }
+  if (STATE.activeAudio) {
+    try { STATE.activeAudio.pause(); STATE.activeAudio = null; } catch(e){}
   }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
