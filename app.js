@@ -52,7 +52,9 @@ const STATE = {
   // System variables
   isSpeechActive: false,
   recognitionActive: false,
-  activeAudio: null
+  activeAudio: null,
+  dashboardActive: false,
+  speechRestartDelay: 1000
 };
 
 // Ensure API key is saved to localStorage if not already there
@@ -402,6 +404,14 @@ function initSpeechEngine() {
       STATE.consecutiveSpeechFailures = 0;
     }
     
+    // Exponential backoff to prevent rapid restarts if the engine is terminating immediately
+    if (duration < 2000) {
+      STATE.speechRestartDelay = Math.min((STATE.speechRestartDelay || 1000) * 2, 8000);
+      console.log(`[Speech Engine]: Rapid end detected. Backing off restart delay to ${STATE.speechRestartDelay}ms.`);
+    } else {
+      STATE.speechRestartDelay = 1000; // Reset to 1s on normal sessions
+    }
+    
     if (STATE.consecutiveSpeechFailures >= 4) {
       console.warn('[Speech Engine]: Rapid failure loop detected. Disabling auto-restart.');
       STATE.micPermissionDenied = true; // Block auto-restarts
@@ -411,14 +421,14 @@ function initSpeechEngine() {
       return;
     }
     
-    // Auto-restart if we are in sleeping/listening state and mic is not blocked
-    if (!STATE.micPermissionDenied && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
-      console.log('[Speech Engine]: Restarting microphone connection...');
+    // Auto-restart if we are in sleeping/listening state, mic is not blocked, and dashboard is not active
+    if (!STATE.micPermissionDenied && !STATE.dashboardActive && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
+      console.log(`[Speech Engine]: Restarting microphone connection in ${STATE.speechRestartDelay}ms...`);
       setTimeout(() => {
-        if (!STATE.micPermissionDenied && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
+        if (!STATE.micPermissionDenied && !STATE.dashboardActive && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
           try { rec.start(); } catch (e) {}
         }
-      }, 400);
+      }, STATE.speechRestartDelay);
     }
   };
   
@@ -871,15 +881,23 @@ function enterFullscreen() {
 function bindUIEvents() {
   // Toggle Dashboard overlay via corner click
   DOM.hiddenTrigger.addEventListener('click', () => {
+    STATE.dashboardActive = true;
     DOM.faceContainer.classList.add('hidden');
     DOM.dashboardContainer.classList.remove('hidden');
+    if (STATE.activeRecognition) {
+      try { STATE.activeRecognition.stop(); } catch(e){}
+    }
   });
   
   // Back to Face Button (Smiley)
   DOM.dbBackBtn.addEventListener('click', () => {
+    STATE.dashboardActive = false;
     DOM.dashboardContainer.classList.add('hidden');
     DOM.faceContainer.classList.remove('hidden');
     enterFullscreen();
+    if (STATE.activeRecognition && !STATE.micPermissionDenied) {
+      try { STATE.activeRecognition.start(); } catch(e){}
+    }
   });
   
   // Voice Toggle Button
