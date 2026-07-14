@@ -92,29 +92,19 @@ body {
 
 /* Robot Helmet Structure */
 .robot-helmet {
-  position: relative;
-  width: 380px;
-  height: 280px;
-  margin-bottom: 40px;
-  animation: breathing 4s ease-in-out infinite;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  animation: breathing 6s ease-in-out infinite;
 }
 
 /* Helmet Ears (LED cylinders on sides) */
 .helmet-ear {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 120px;
-  background: #111a2e;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  z-index: 1;
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
-  transition: all 0.5s ease;
+  display: none;
 }
-.left-ear { left: -14px; }
-.right-ear { right: -14px; }
 
 /* Visor Area (Face Shield) */
 .helmet-visor {
@@ -123,10 +113,10 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: #090e1a;
-  border: 4px solid var(--border-color);
-  border-radius: 60px;
-  box-shadow: inset 0 0 30px rgba(0, 229, 255, 0.15), 0 0 25px rgba(0, 229, 255, 0.08);
+  background: #060913;
+  border: none;
+  border-radius: 0;
+  box-shadow: inset 0 0 120px rgba(0, 229, 255, 0.12);
   overflow: hidden;
   z-index: 2;
   display: flex;
@@ -173,15 +163,15 @@ body {
 .face-eyes {
   display: flex;
   justify-content: space-between;
-  width: 180px;
-  margin-bottom: 25px;
+  width: 320px;
+  margin-bottom: 50px;
   z-index: 3;
 }
 
 .eye {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 100px;
+  height: 100px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -202,64 +192,64 @@ body {
 
 /* Normal circle eyes */
 .normal-eye {
-  width: 44px;
-  height: 44px;
+  width: 80px;
+  height: 80px;
   background-color: var(--teal-color);
   border-radius: 50%;
-  box-shadow: 0 0 20px var(--teal-glow);
+  box-shadow: 0 0 35px var(--teal-glow);
 }
 
 /* X Cross eyes */
 .x-eye svg {
-  width: 50px;
-  height: 50px;
-  filter: drop-shadow(0 0 8px var(--red-color));
+  width: 90px;
+  height: 90px;
+  filter: drop-shadow(0 0 12px var(--red-color));
 }
 
 /* Sleep Eyes (flat lines) */
 .sleep-eye {
-  width: 40px;
-  height: 6px;
-  background-color: rgba(0, 229, 255, 0.5);
-  border-radius: 3px;
-  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+  width: 80px;
+  height: 12px;
+  background-color: rgba(0, 229, 255, 0.6);
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
 }
 
 /* Wink/Arc Eyes */
 .arc-eye svg {
-  width: 50px;
-  height: 50px;
-  filter: drop-shadow(0 0 10px var(--teal-glow));
+  width: 95px;
+  height: 95px;
+  filter: drop-shadow(0 0 15px var(--teal-glow));
 }
 
 /* Processing Spinner eye */
 .spinner-eye {
   display: none;
-  width: 48px;
-  height: 48px;
+  width: 80px;
+  height: 80px;
 }
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(0, 229, 255, 0.1);
-  border-top: 4px solid var(--teal-color);
+  width: 76px;
+  height: 76px;
+  border: 6px solid rgba(0, 229, 255, 0.1);
+  border-top: 6px solid var(--teal-color);
   border-radius: 50%;
   animation: spinner-spin 1s linear infinite;
-  filter: drop-shadow(0 0 6px var(--teal-color));
+  filter: drop-shadow(0 0 10px var(--teal-color));
 }
 
 /* Confused question eye */
 .question-eye {
   font-family: var(--font-mono);
-  font-size: 40px;
+  font-size: 70px;
   font-weight: bold;
-  text-shadow: 0 0 10px var(--teal-glow);
+  text-shadow: 0 0 15px var(--teal-glow);
 }
 
 /* ==================== INTERACTIVE MOUTH ==================== */
 .face-mouth {
-  width: 120px;
-  height: 40px;
+  width: 220px;
+  height: 60px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -271,7 +261,7 @@ body {
   width: 100%;
   height: 100%;
   display: none;
-  filter: drop-shadow(0 0 8px var(--teal-glow));
+  filter: drop-shadow(0 0 12px var(--teal-glow));
 }
 
 /* Speaking mouth bars */
@@ -279,17 +269,17 @@ body {
   display: none;
   justify-content: center;
   align-items: center;
-  gap: 6px;
-  width: 100px;
-  height: 25px;
+  gap: 10px;
+  width: 180px;
+  height: 45px;
 }
 
 .mouth-equalizer .bar {
-  width: 8px;
-  height: 6px;
+  width: 14px;
+  height: 8px;
   background-color: var(--teal-color);
-  border-radius: 4px;
-  box-shadow: 0 0 8px var(--teal-glow);
+  border-radius: 6px;
+  box-shadow: 0 0 12px var(--teal-glow);
   animation: mouth-talk 0.1s ease-in-out infinite alternate;
 }
 .mouth-equalizer .bar:nth-child(1) { animation-delay: 0.1s; }
@@ -301,15 +291,16 @@ body {
 /* Status Text below visor */
 .face-status-text {
   font-family: var(--font-mono);
-  font-size: 16px;
-  letter-spacing: 2px;
+  font-size: 22px;
+  letter-spacing: 3px;
   color: var(--text-secondary);
   text-transform: uppercase;
-  margin-top: 15px;
-  height: 24px;
+  margin-top: 30px;
+  height: 30px;
   text-align: center;
-  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
   transition: all 0.3s ease;
+  z-index: 3;
 }
 
 /* Listening Audio Waves at base */
@@ -317,17 +308,18 @@ body {
   display: none;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  margin-top: 20px;
-  height: 30px;
+  gap: 6px;
+  margin-top: 30px;
+  height: 40px;
+  z-index: 3;
 }
 .face-wave-bar {
-  width: 3px;
-  height: 6px;
+  width: 5px;
+  height: 10px;
   background: var(--teal-color);
-  border-radius: 2px;
+  border-radius: 3px;
   animation: audio-wave-anim 0.8s ease-in-out infinite alternate;
-  box-shadow: 0 0 6px var(--teal-glow);
+  box-shadow: 0 0 10px var(--teal-glow);
 }
 .face-wave-bar:nth-child(1) { animation-delay: 0.1s; }
 .face-wave-bar:nth-child(2) { animation-delay: 0.4s; }

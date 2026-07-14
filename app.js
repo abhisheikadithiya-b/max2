@@ -246,6 +246,26 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 
 let accumulatedText = '';
 
+// Multilingual Wake Words
+const WAKE_WORDS = {
+  auto: ['start', 'max', 'தொடங்கு', 'மேக்ஸ்', 'துவங்கு', 'शुरू', 'स्टार्ट', 'मैक्स', 'ప్రారంభించు', 'మాక్స్', 'തുടങ്ങുക', 'മാക്സ്'],
+  en: ['start', 'max'],
+  ta: ['start', 'max', 'தொடங்கு', 'மேக்ஸ்', 'துவங்கு', 'துவக்கு'],
+  hi: ['start', 'max', 'शुरू', 'स्टार्ट', 'मैक्स'],
+  te: ['start', 'max', 'ప్రారంభించు', 'స్టార్ట్', 'మాక్స్'],
+  ml: ['start', 'max', 'തുടങ്ങുക', 'സ്റ്റാർട്ട്', 'മാക്സ്']
+};
+
+// Multilingual Stop Words
+const STOP_WORDS = {
+  auto: ['stop', 'நிறுத்து', 'रुको', 'आपु', 'നിർത്തുക', 'നിർത്തു', 'പോക്കോ'],
+  en: ['stop'],
+  ta: ['stop', 'நிறுத்து', 'போது', 'முடி'],
+  hi: ['stop', 'रुको', 'बस', 'खत्म'],
+  te: ['stop', 'ఆపు', 'చాలు'],
+  ml: ['stop', 'നിർത്തുക', 'നിർത്തു']
+};
+
 // Main Speech Recognition Setup
 function initSpeechEngine() {
   if (!SpeechRecognition) {
@@ -269,11 +289,6 @@ function initSpeechEngine() {
   };
   
   rec.onresult = (event) => {
-    // 1. DISCARD results if processing, speaking, or in cooldown
-    if (STATE.current === 'processing' || STATE.current === 'speaking' || STATE.current === 'error') {
-      return;
-    }
-    
     let interimTranscript = '';
     let localFinal = '';
     
@@ -288,13 +303,42 @@ function initSpeechEngine() {
     const text = (localFinal || interimTranscript).trim();
     if (!text) return;
     
-    console.log(`[Speech Engine Result] State: ${STATE.current}, Text: "${text}"`);
+    const lowerText = text.toLowerCase();
     
-    // 2. WAKE WORD DETECTION (IF SLEEPING)
+    // 1. INSTANT STOP COMMAND (Works even while speaking or processing)
+    const stopWordsList = STOP_WORDS[STATE.selectedLang] || STOP_WORDS.auto;
+    const matchesStop = stopWordsList.some(word => lowerText.includes(word));
+    
+    if (matchesStop && (STATE.current === 'listening' || STATE.current === 'speaking' || STATE.current === 'processing')) {
+      console.log('[Speech Engine]: Instant stop command triggered!');
+      playChime('stop');
+      accumulatedText = '';
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      clearTimeout(STATE.listeningTimeout);
+      clearTimeout(STATE.silenceTimeout);
+      clearTimeout(STATE.cooldownTimeout);
+      
+      appendMessage('user', 'stop');
+      appendMessage('bot', 'Stopping session. Goodbye.');
+      speakText('Stopping session. Goodbye.', 'en');
+      transitionTo('sleeping');
+      return;
+    }
+    
+    // Discard other inputs if speaking, processing, or in error state
+    if (STATE.current === 'processing' || STATE.current === 'speaking' || STATE.current === 'error') {
+      return;
+    }
+    
+    // 2. INSTANT WAKE WORD DETECTION (IF SLEEPING)
     if (STATE.current === 'sleeping') {
-      const lowerText = text.toLowerCase();
-      if (lowerText.includes('start') || lowerText.includes('max')) {
-        console.log('[Speech Engine]: Wake word triggered active session!');
+      const wakeWordsList = WAKE_WORDS[STATE.selectedLang] || WAKE_WORDS.auto;
+      const matchesWake = wakeWordsList.some(word => lowerText.includes(word));
+      
+      if (matchesWake) {
+        console.log('[Speech Engine]: Instant wake word triggered!');
         playChime('start');
         accumulatedText = '';
         transitionTo('listening');
@@ -305,28 +349,20 @@ function initSpeechEngine() {
     
     // 3. ACTIVE CONVERSATION (IF LISTENING)
     if (STATE.current === 'listening') {
-      // Reset 2-second silence timer on each voice input
-      resetSilenceTimer();
-      
       const fullText = (accumulatedText + ' ' + localFinal + interimTranscript).trim();
+      
+      // Crowded Room Optimization:
+      // Only reset the 2-second silence timer if the transcription text has actually changed!
+      const previousUI = DOM.faceStatusText.innerText.replace(/"/g, '').trim();
+      if (fullText !== previousUI) {
+        resetSilenceTimer();
+      }
+      
       DOM.faceStatusText.innerText = `"${fullText}"`;
       DOM.dbStatusInstruction.innerText = `"${fullText}"`;
       
       if (localFinal) {
         accumulatedText = (accumulatedText + ' ' + localFinal).trim();
-      }
-      
-      // Check for stop command
-      const lowerText = text.toLowerCase();
-      const stopWords = ['stop', 'நிறுத்து', 'रुको', 'आपु', 'നിർത്തുക', 'നിർത്തു'];
-      if (stopWords.some(word => lowerText.includes(word))) {
-        console.log('[Speech Engine]: "stop" command received.');
-        playChime('stop');
-        accumulatedText = '';
-        appendMessage('user', 'stop');
-        appendMessage('bot', 'Stopping session. Goodbye.');
-        speakText('Stopping session. Goodbye.', 'en');
-        transitionTo('sleeping');
       }
     }
   };
@@ -485,13 +521,17 @@ async function processPrompt(promptText) {
     };
   };
   
+  const controller = new AbortController();
+  const networkTimeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout for slow networks
+  
   try {
     let response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(getRequestBody(activeModel))
+      body: JSON.stringify(getRequestBody(activeModel)),
+      signal: controller.signal
     });
     
     // Check if overloaded (503) or rate-limited (429), and fallback to gemini-3.1-flash-lite
@@ -508,9 +548,12 @@ async function processPrompt(promptText) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(getRequestBody(activeModel))
+        body: JSON.stringify(getRequestBody(activeModel)),
+        signal: controller.signal
       });
     }
+    
+    clearTimeout(networkTimeoutId);
     
     const latency = Math.round(performance.now() - startTime);
     DOM.latencyVal.innerText = `${latency} ms`;
@@ -537,16 +580,31 @@ async function processPrompt(promptText) {
     speakResponseAndContinue(botResponse);
     
   } catch (error) {
+    clearTimeout(networkTimeoutId);
     console.error('[Gemini API Call Failed]:', error);
     playChime('error');
-    const errMsg = `Error: Could not connect to API. ${error.message}`;
+    
+    let errMsg = `Error: Could not connect to API. ${error.message}`;
+    if (error.name === 'AbortError') {
+      errMsg = 'Error: Connection timeout. Network is too slow.';
+      // Automatically retry once with the light model if not already using it
+      if (activeModel !== 'gemini-3.1-flash-lite') {
+        console.log('[Network Timeout]: Retrying immediately with gemini-3.1-flash-lite.');
+        STATE.model = 'gemini-3.1-flash-lite';
+        processPrompt(promptText);
+        return;
+      }
+    }
+    
     appendMessage('bot', errMsg);
     
     // Transition to error, and wait 3s before resetting
     transitionTo('error');
     setTimeout(() => {
       transitionTo('sleeping');
-      initWakeWordListener();
+      if (!STATE.recognitionActive) {
+        try { STATE.activeRecognition.start(); } catch(e){}
+      }
     }, 3000);
   }
 }
@@ -694,6 +752,17 @@ function handleManualSend() {
   processPrompt(prompt);
 }
 
+function enterFullscreen() {
+  const docEl = document.documentElement;
+  try {
+    if (docEl.requestFullscreen) docEl.requestFullscreen();
+    else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+    else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+  } catch (e) {
+    console.warn('[Fullscreen]: Browser blocked fullscreen request.', e);
+  }
+}
+
 // ==================== UI BINDINGS & TOGGLES ====================
 
 // Setup page event listeners
@@ -708,6 +777,7 @@ function bindUIEvents() {
   DOM.dbBackBtn.addEventListener('click', () => {
     DOM.dashboardContainer.classList.add('hidden');
     DOM.faceContainer.classList.remove('hidden');
+    enterFullscreen();
   });
   
   // Voice Toggle Button
@@ -852,6 +922,11 @@ function init() {
         ctx.resume();
       }
     } catch (e) {}
+    
+    // Automatically enter fullscreen on first tap if in face screen
+    if (DOM.dashboardContainer.classList.contains('hidden')) {
+      enterFullscreen();
+    }
   });
   
   console.log('[MAX Assistant]: Initialized successfully.');
