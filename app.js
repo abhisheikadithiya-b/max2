@@ -374,6 +374,7 @@ function initSpeechEngine() {
   
   rec.onerror = (err) => {
     console.error('[Speech Engine Error]:', err.error);
+    STATE.lastSpeechError = err.error;
     
     // Handle microphone permission denial
     if (err.error === 'not-allowed' || err.error === 'service-not-allowed') {
@@ -389,9 +390,13 @@ function initSpeechEngine() {
     STATE.recognitionActive = false;
     console.log('[Speech Engine]: Connection ended.');
     
-    // Safeguard: Check for immediate rapid restart loops (less than 1.5 seconds)
+    // Classify if the connection ended due to a real error (ignore no-speech and aborted manual stops)
+    const wasRealError = STATE.lastSpeechError && STATE.lastSpeechError !== 'no-speech' && STATE.lastSpeechError !== 'aborted';
+    STATE.lastSpeechError = null; // Reset tracker
+    
+    // Safeguard: Check for immediate rapid restart loops (less than 1.5 seconds) on real errors
     const duration = Date.now() - (STATE.recognitionStartTime || 0);
-    if (duration < 1500) {
+    if (wasRealError && duration < 1500) {
       STATE.consecutiveSpeechFailures = (STATE.consecutiveSpeechFailures || 0) + 1;
     } else {
       STATE.consecutiveSpeechFailures = 0;
