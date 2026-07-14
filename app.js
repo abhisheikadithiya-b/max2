@@ -1047,6 +1047,15 @@ function init() {
     if (DOM.dashboardContainer.classList.contains('hidden')) {
       enterFullscreen();
     }
+    
+    // Start microphone on first user interaction if blocked on load due to browser autoplay policies
+    if (STATE.activeRecognition && !STATE.recognitionActive && !STATE.micPermissionDenied && !STATE.dashboardActive) {
+      try {
+        STATE.activeRecognition.start();
+      } catch (e) {
+        console.warn('[Speech Engine restart on click failed]:', e);
+      }
+    }
   });
   
   console.log('[MAX Assistant]: Initialized successfully.');
