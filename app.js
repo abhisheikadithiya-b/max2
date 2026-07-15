@@ -361,9 +361,9 @@ function initSpeechEngine() {
       const fullText = (accumulatedText + ' ' + localFinal + interimTranscript).trim();
       
       // Crowded Room Optimization:
-      // Only reset the 2-second silence timer if the transcription text has actually changed!
+      // Only reset the 2-second silence timer if the transcription text has content and has changed!
       const previousUI = DOM.faceStatusText.innerText.replace(/"/g, '').trim();
-      if (fullText !== previousUI) {
+      if (fullText && fullText !== previousUI) {
         resetSilenceTimer();
       }
       
@@ -461,9 +461,6 @@ function resetListeningTimers() {
     console.log('[Active Session]: 10s maximum time reached. Triggering processing.');
     triggerProcessing();
   }, 10000);
-  
-  // 2s silence detection
-  resetSilenceTimer();
 }
 
 function resetSilenceTimer() {
