@@ -278,7 +278,7 @@ function initSpeechEngine() {
   }
   
   const rec = new SpeechRecognition();
-  rec.continuous = true;
+  rec.continuous = false; // Single-shot listening for maximum stability
   rec.interimResults = true;
   
   // Set initial language code
@@ -331,6 +331,7 @@ function initSpeechEngine() {
       appendMessage('bot', 'Stopping session. Goodbye.');
       speakText('Stopping session. Goodbye.', 'en');
       transitionTo('sleeping');
+      try { rec.stop(); } catch(e){} // Force stop
       return;
     }
     
@@ -350,6 +351,7 @@ function initSpeechEngine() {
         accumulatedText = '';
         transitionTo('listening');
         resetListeningTimers();
+        try { rec.stop(); } catch(e){} // Stop to trigger onend and restart listening cleanly
       }
       return;
     }
@@ -375,7 +377,7 @@ function initSpeechEngine() {
   };
   
   rec.onerror = (err) => {
-    console.error('[Speech Engine Error]:', err.error);
+    console.warn('[Speech Engine Error]:', err.error);
     STATE.lastSpeechError = err.error;
     
     // Handle microphone permission denial
@@ -404,12 +406,13 @@ function initSpeechEngine() {
       STATE.consecutiveSpeechFailures = 0;
     }
     
-    // Exponential backoff to prevent rapid restarts if the engine is terminating immediately
-    if (duration < 2000) {
+    // Exponential backoff to prevent rapid restarts if the engine is crashing immediately
+    if (duration < 1500 && wasRealError) {
       STATE.speechRestartDelay = Math.min((STATE.speechRestartDelay || 1000) * 2, 8000);
-      console.log(`[Speech Engine]: Rapid end detected. Backing off restart delay to ${STATE.speechRestartDelay}ms.`);
+      console.log(`[Speech Engine]: Rapid end loop detected. Backing off restart delay to ${STATE.speechRestartDelay}ms.`);
     } else {
-      STATE.speechRestartDelay = 1000; // Reset to 1s on normal sessions
+      // Normal single-shot sessions end and restart in 300ms for continuous conversation feel
+      STATE.speechRestartDelay = 300; 
     }
     
     if (STATE.consecutiveSpeechFailures >= 4) {
@@ -423,7 +426,6 @@ function initSpeechEngine() {
     
     // Auto-restart if we are in sleeping/listening state, mic is not blocked, and dashboard is not active
     if (!STATE.micPermissionDenied && !STATE.dashboardActive && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
-      console.log(`[Speech Engine]: Restarting microphone connection in ${STATE.speechRestartDelay}ms...`);
       setTimeout(() => {
         if (!STATE.micPermissionDenied && !STATE.dashboardActive && (STATE.current === 'sleeping' || STATE.current === 'listening')) {
           try { rec.start(); } catch (e) {}
