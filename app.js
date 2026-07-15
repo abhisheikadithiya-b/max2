@@ -7,7 +7,7 @@
 const CONFIG = {
   // Default API Key provided by user
   defaultApiKey: '',
-  defaultModel: 'gemini-3.1-flash-lite',
+  defaultModel: 'gemini-2.5-flash',
   
   // Language mappings for Speech Recognition & Synthesis
   languages: {
@@ -20,9 +20,9 @@ const CONFIG = {
   }
 };
 
-// Force update if old model or overloaded model is stored
-if (localStorage.getItem('max_model') === 'gemini-2.5-flash' || localStorage.getItem('max_model') === 'gemini-3.5-flash') {
-  localStorage.setItem('max_model', 'gemini-3.1-flash-lite');
+// Force update stored model to gemini-2.5-flash to support Google Search Grounding
+if (!localStorage.getItem('max_model') || localStorage.getItem('max_model') === 'gemini-3.1-flash-lite' || localStorage.getItem('max_model') === 'gemini-3.5-flash') {
+  localStorage.setItem('max_model', 'gemini-2.5-flash');
 }
 
 const STATE = {

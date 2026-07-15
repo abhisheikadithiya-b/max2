@@ -163,15 +163,15 @@ body {
 .face-eyes {
   display: flex;
   justify-content: space-between;
-  width: 320px;
-  margin-bottom: 50px;
+  width: 480px;
+  margin-bottom: 70px;
   z-index: 3;
 }
 
 .eye {
   position: relative;
-  width: 100px;
-  height: 100px;
+  width: 140px;
+  height: 140px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -192,8 +192,8 @@ body {
 
 /* Normal circle eyes */
 .normal-eye {
-  width: 80px;
-  height: 80px;
+  width: 110px;
+  height: 110px;
   background-color: var(--teal-color);
   border-radius: 50%;
   box-shadow: 0 0 35px var(--teal-glow);
@@ -201,38 +201,38 @@ body {
 
 /* X Cross eyes */
 .x-eye svg {
-  width: 90px;
-  height: 90px;
+  width: 120px;
+  height: 120px;
   filter: drop-shadow(0 0 12px var(--red-color));
 }
 
 /* Sleep Eyes (flat lines) */
 .sleep-eye {
-  width: 80px;
-  height: 12px;
+  width: 110px;
+  height: 16px;
   background-color: rgba(0, 229, 255, 0.6);
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
 }
 
 /* Wink/Arc Eyes */
 .arc-eye svg {
-  width: 95px;
-  height: 95px;
+  width: 130px;
+  height: 130px;
   filter: drop-shadow(0 0 15px var(--teal-glow));
 }
 
 /* Processing Spinner eye */
 .spinner-eye {
   display: none;
-  width: 80px;
-  height: 80px;
+  width: 110px;
+  height: 110px;
 }
 .spinner {
-  width: 76px;
-  height: 76px;
-  border: 6px solid rgba(0, 229, 255, 0.1);
-  border-top: 6px solid var(--teal-color);
+  width: 104px;
+  height: 104px;
+  border: 8px solid rgba(0, 229, 255, 0.1);
+  border-top: 8px solid var(--teal-color);
   border-radius: 50%;
   animation: spinner-spin 1s linear infinite;
   filter: drop-shadow(0 0 10px var(--teal-color));
@@ -241,15 +241,15 @@ body {
 /* Confused question eye */
 .question-eye {
   font-family: var(--font-mono);
-  font-size: 70px;
+  font-size: 100px;
   font-weight: bold;
   text-shadow: 0 0 15px var(--teal-glow);
 }
 
 /* ==================== INTERACTIVE MOUTH ==================== */
 .face-mouth {
-  width: 220px;
-  height: 60px;
+  width: 320px;
+  height: 90px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -269,16 +269,16 @@ body {
   display: none;
   justify-content: center;
   align-items: center;
-  gap: 10px;
-  width: 180px;
-  height: 45px;
+  gap: 12px;
+  width: 260px;
+  height: 70px;
 }
 
 .mouth-equalizer .bar {
-  width: 14px;
-  height: 8px;
+  width: 20px;
+  height: 12px;
   background-color: var(--teal-color);
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: 0 0 12px var(--teal-glow);
   animation: mouth-talk 0.1s ease-in-out infinite alternate;
 }
@@ -1174,18 +1174,52 @@ body {
     height: 220px;
   }
   .face-eyes {
-    width: 140px;
+    width: 220px;
+    margin-bottom: 30px;
   }
   .eye {
-    width: 44px;
-    height: 44px;
+    width: 65px;
+    height: 65px;
   }
   .normal-eye {
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
+  }
+  .sleep-eye {
+    width: 48px;
+    height: 8px;
+    border-radius: 4px;
+  }
+  .x-eye svg, 
+  .arc-eye svg, 
+  .heart-eye svg {
+    width: 54px;
+    height: 54px;
+  }
+  .spinner-eye {
+    width: 48px;
+    height: 48px;
+  }
+  .spinner {
+    width: 44px;
+    height: 44px;
+    border-width: 4px;
+  }
+  .question-eye {
+    font-size: 44px;
   }
   .face-mouth {
-    width: 90px;
+    width: 150px;
+    height: 40px;
+  }
+  .mouth-equalizer {
+    width: 130px;
+    height: 30px;
+    gap: 6px;
+  }
+  .mouth-equalizer .bar {
+    width: 10px;
+    height: 6px;
   }
   .db-controls-container {
     padding: 16px;
@@ -1205,8 +1239,8 @@ body {
 /* ==================== DYNAMIC EXPRESSION CONTROLS ==================== */
 /* Heart Eye shape properties */
 .heart-eye svg {
-  width: 80px;
-  height: 80px;
+  width: 110px;
+  height: 110px;
   color: var(--teal-color);
   filter: drop-shadow(0 0 15px var(--teal-glow));
 }
