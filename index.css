@@ -1201,3 +1201,104 @@ body {
     height: 95vh;
   }
 }
+
+/* ==================== DYNAMIC EXPRESSION CONTROLS ==================== */
+/* Heart Eye shape properties */
+.heart-eye svg {
+  width: 80px;
+  height: 80px;
+  color: var(--teal-color);
+  filter: drop-shadow(0 0 15px var(--teal-glow));
+}
+
+/* Override standard eye/mouth visibility when a custom expression class is active on the body */
+body.state-sleeping.expr-happy .eye-shape,
+body.state-listening.expr-happy .eye-shape,
+body.state-sleeping.expr-confused .eye-shape,
+body.state-listening.expr-confused .eye-shape,
+body.state-sleeping.expr-love .eye-shape,
+body.state-listening.expr-love .eye-shape,
+body.state-sleeping.expr-wink .eye-shape,
+body.state-listening.expr-wink .eye-shape,
+body.state-sleeping.expr-surprised .eye-shape,
+body.state-listening.expr-surprised .eye-shape {
+  display: none !important;
+}
+
+body.state-sleeping.expr-happy .face-mouth svg,
+body.state-listening.expr-happy .face-mouth svg,
+body.state-sleeping.expr-confused .face-mouth svg,
+body.state-listening.expr-confused .face-mouth svg,
+body.state-sleeping.expr-love .face-mouth svg,
+body.state-listening.expr-love .face-mouth svg,
+body.state-sleeping.expr-wink .face-mouth svg,
+body.state-listening.expr-wink .face-mouth svg,
+body.state-sleeping.expr-surprised .face-mouth svg,
+body.state-listening.expr-surprised .face-mouth svg {
+  display: none !important;
+}
+
+/* --- Expressions configurations --- */
+
+/* Happy: Curved smile eyes + smiling mouth */
+body.state-sleeping.expr-happy .left-eye .arc-eye,
+body.state-sleeping.expr-happy .right-eye .arc-eye,
+body.state-listening.expr-happy .left-eye .arc-eye,
+body.state-listening.expr-happy .right-eye .arc-eye {
+  display: flex !important;
+}
+body.state-sleeping.expr-happy .face-mouth svg.mouth-smile,
+body.state-listening.expr-happy .face-mouth svg.mouth-smile {
+  display: block !important;
+}
+
+/* Confused: Question eyes + sad mouth */
+body.state-sleeping.expr-confused .left-eye .question-eye,
+body.state-sleeping.expr-confused .right-eye .question-eye,
+body.state-listening.expr-confused .left-eye .question-eye,
+body.state-listening.expr-confused .right-eye .question-eye {
+  display: flex !important;
+}
+body.state-sleeping.expr-confused .face-mouth svg.mouth-sad,
+body.state-listening.expr-confused .face-mouth svg.mouth-sad {
+  display: block !important;
+}
+
+/* Love: Heart eyes + smiling mouth */
+body.state-sleeping.expr-love .left-eye .heart-eye,
+body.state-sleeping.expr-love .right-eye .heart-eye,
+body.state-listening.expr-love .left-eye .heart-eye,
+body.state-listening.expr-love .right-eye .heart-eye {
+  display: flex !important;
+}
+body.state-sleeping.expr-love .face-mouth svg.mouth-smile,
+body.state-listening.expr-love .face-mouth svg.mouth-smile {
+  display: block !important;
+}
+
+/* Wink: Left arched eye, right normal eye + smiling mouth */
+body.state-sleeping.expr-wink .left-eye .arc-eye,
+body.state-listening.expr-wink .left-eye .arc-eye,
+body.state-sleeping.expr-wink .right-eye .normal-eye,
+body.state-listening.expr-wink .right-eye .normal-eye {
+  display: flex !important;
+}
+body.state-sleeping.expr-wink .face-mouth svg.mouth-smile,
+body.state-listening.expr-wink .face-mouth svg.mouth-smile {
+  display: block !important;
+}
+
+/* Surprised: Normal round eyes + neutral mouth */
+body.state-sleeping.expr-surprised .left-eye .normal-eye,
+body.state-sleeping.expr-surprised .right-eye .normal-eye,
+body.state-listening.expr-surprised .left-eye .normal-eye,
+body.state-listening.expr-surprised .right-eye .normal-eye {
+  display: flex !important;
+}
+body.state-sleeping.expr-surprised .face-mouth svg.mouth-neutral,
+body.state-listening.expr-surprised .face-mouth svg.mouth-neutral {
+  display: block !important;
+}
+
+
+

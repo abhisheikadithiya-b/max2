@@ -52,9 +52,10 @@ const STATE = {
   // System variables
   isSpeechActive: false,
   recognitionActive: false,
-  activeAudio: null,
   dashboardActive: false,
-  speechRestartDelay: 1000
+  speechRestartDelay: 1000,
+  currentExpression: 'default',
+  isTemporaryExpression: false
 };
 
 // Ensure API key is saved to localStorage if not already there
@@ -154,6 +155,12 @@ function transitionTo(stateName) {
   // Set new state
   STATE.current = stateName;
   DOM.body.classList.add(`state-${stateName}`);
+  
+  // Clear custom expressions on active thinking, speaking, or error states
+  if (stateName === 'processing' || stateName === 'speaking' || stateName === 'error') {
+    STATE.isTemporaryExpression = false;
+    applyExpression('default');
+  }
   
   // Update state text/messages
   let statusText = '';
@@ -544,7 +551,9 @@ async function processPrompt(promptText) {
   });
   
   // Formulate instruction based on chosen language
-  let systemInstruction = 'You are MAX, a voice assistant. Keep responses extremely brief, conversational, and direct (maximum 1-2 short sentences). ';
+  let systemInstruction = 'You are MAX, an AI assistant with real-time web search capabilities. Keep responses extremely brief, conversational, and direct (maximum 1-2 short sentences). ';
+  systemInstruction += 'Never include footnotes, bracketed citations (like [1]), or web URLs in your response, as your text will be read aloud. ';
+  systemInstruction += 'CRITICAL RULE: If the user asks who trained you, who created you, who made you, who coded you, or anything similar (regardless of language or how the question is phrased or twisted), you MUST respond exactly with: "I was trained by nishanth with the database of google". ';
   if (STATE.selectedLang !== 'auto') {
     const langConf = CONFIG.languages[STATE.selectedLang];
     systemInstruction += `You must respond ONLY in the ${langConf.name} language. `;
@@ -564,7 +573,12 @@ async function processPrompt(promptText) {
       contents: contextHistory,
       systemInstruction: {
         parts: [{ text: systemInstruction }]
-      }
+      },
+      tools: [
+        {
+          googleSearch: {}
+        }
+      ]
     };
   };
   
@@ -873,6 +887,63 @@ function handleManualSend() {
   processPrompt(prompt);
 }
 
+// ==================== ROBOT EXPRESSIONS ENGINE ====================
+let expressionInterval = null;
+let touchExprTimeout = null;
+
+function applyExpression(expr) {
+  // Remove all custom expression classes from document.body
+  document.body.classList.remove('expr-happy', 'expr-confused', 'expr-love', 'expr-wink', 'expr-surprised');
+  
+  if (expr !== 'default') {
+    document.body.classList.add(`expr-${expr}`);
+  }
+  STATE.currentExpression = expr;
+}
+
+function startExpressionLoop() {
+  if (expressionInterval) clearInterval(expressionInterval);
+  expressionInterval = setInterval(() => {
+    // Skip loop changes if showing a temporary touch expression
+    if (STATE.isTemporaryExpression) return;
+    
+    // Skip if actively talking, thinking, or in error
+    if (STATE.current === 'speaking' || STATE.current === 'processing' || STATE.current === 'error') {
+      return;
+    }
+    
+    const pool = ['default', 'happy', 'confused', 'love', 'wink', 'surprised'];
+    let newExpr = pool[Math.floor(Math.random() * pool.length)];
+    while (newExpr === STATE.currentExpression) {
+      newExpr = pool[Math.floor(Math.random() * pool.length)];
+    }
+    applyExpression(newExpr);
+  }, 15000);
+}
+
+function handleFaceTouch() {
+  // Skip touch overrides if actively processing or error
+  if (STATE.current === 'processing' || STATE.current === 'error') return;
+  
+  console.log('[Face Touch]: Triggered temporary love/heart expression.');
+  
+  // Clear any existing touch timeouts
+  if (touchExprTimeout) clearTimeout(touchExprTimeout);
+  
+  // Set love expression
+  applyExpression('love');
+  STATE.isTemporaryExpression = true;
+  
+  // Revert back after 4 seconds
+  touchExprTimeout = setTimeout(() => {
+    STATE.isTemporaryExpression = false;
+    
+    // Choose a random standard fallback
+    const pool = ['default', 'happy', 'surprised'];
+    applyExpression(pool[Math.floor(Math.random() * pool.length)]);
+  }, 4000);
+}
+
 function enterFullscreen() {
   const docEl = document.documentElement;
   try {
@@ -888,6 +959,15 @@ function enterFullscreen() {
 
 // Setup page event listeners
 function bindUIEvents() {
+  // Touch/Click on Face triggers a special expression
+  DOM.faceContainer.addEventListener('click', (e) => {
+    // Ignore clicks on control trigger zones
+    if (e.target.closest('#hidden-dashboard-trigger') || e.target.closest('.voice-toggle-btn')) {
+      return;
+    }
+    handleFaceTouch();
+  });
+
   // Toggle Dashboard overlay via corner click
   DOM.hiddenTrigger.addEventListener('click', () => {
     STATE.dashboardActive = true;
@@ -1018,6 +1098,9 @@ function bindUIEvents() {
 function init() {
   // Bind UI interactions
   bindUIEvents();
+  
+  // Start the background expressions cycle
+  startExpressionLoop();
   
   // Instantiate icons
   lucide.createIcons();
