@@ -7,7 +7,7 @@
 const CONFIG = {
   // Default API Key provided by user
   defaultApiKey: '',
-  defaultModel: 'gemini-2.5-flash',
+  defaultModel: 'gemini-3.5-flash',
   
   // Language mappings for Speech Recognition & Synthesis
   languages: {
@@ -20,9 +20,9 @@ const CONFIG = {
   }
 };
 
-// Force update stored model to gemini-2.5-flash to support Google Search Grounding
-if (!localStorage.getItem('max_model') || localStorage.getItem('max_model') === 'gemini-3.1-flash-lite' || localStorage.getItem('max_model') === 'gemini-3.5-flash') {
-  localStorage.setItem('max_model', 'gemini-2.5-flash');
+// Force update stored model to gemini-3.5-flash to support Google Search Grounding
+if (!localStorage.getItem('max_model') || localStorage.getItem('max_model') === 'gemini-3.1-flash-lite' || localStorage.getItem('max_model') === 'gemini-2.5-flash') {
+  localStorage.setItem('max_model', 'gemini-3.5-flash');
 }
 
 const STATE = {
@@ -511,11 +511,66 @@ function triggerProcessing() {
   processPrompt(userPrompt);
 }
 
+// ==================== LOCAL FACTS DATABASE ====================
+const LOCAL_DATABASE = {
+  cm_tamilnadu: {
+    keywords: [
+      'cm of tamil nadu', 'chief minister of tamil nadu', 'cm of tamilnadu', 'chief minister of tamilnadu', 
+      'tamil nadu chief minister', 'tamilnadu chief minister', 'tamilnadu cm', 'tamil nadu cm',
+      'தமிழ்நாடு முதலமைச்சர்', 'தமிழ்நாடு முதல்வர்', 'தமிழ்நாட்டின் முதல்வர்', 'தமிழ்நாட்டின் முதலமைச்சர்'
+    ],
+    answers: {
+      en: "The current Chief Minister of Tamil Nadu is C. Joseph Vijay, the founder of Tamilaga Vettri Kazhagam (TVK), who assumed office on May 10, 2026.",
+      ta: "தமிழகத்தின் தற்போதைய முதலமைச்சர் தமிழக வெற்றி கழகத்தின் (தவிக) நிறுவனர் சி. ஜோசப் விஜய் ஆவார். இவர் மே 10, 2026 அன்று பதவியேற்றார்."
+    }
+  },
+  tvk_party: {
+    keywords: [
+      'tvk', 'tamilaga vettri kazhagam', 'tamilaga vetri kazhagam', 'vijay party', 'vijay\'s party', 
+      'தவிக', 'தமிழக வெற்றி கழகம்', 'தமிழக வெற்றிக் கழகம்', 'விஜய் கட்சி'
+    ],
+    answers: {
+      en: "Tamilaga Vettri Kazhagam (TVK) is a political party in Tamil Nadu founded by C. Joseph Vijay. The party won 108 seats in the 2026 elections. Key leaders include General Secretary N. Anand and Treasurer P. Venkataramanan.",
+      ta: "தமிழக வெற்றி கழகம் (தவிக) என்பது சி. ஜோசப் விஜய் அவர்களால் தொடங்கப்பட்ட ஒரு அரசியல் கட்சியாகும். இக்கட்சி 2026 தேர்தலில் 108 இடங்களை வென்றது. இதன் பொதுச் செயலாளர் என். ஆனந்த் மற்றும் பொருளாளர் பி. வெங்கடரமணன் ஆவர்."
+    }
+  }
+};
+
+function checkLocalDatabase(promptText) {
+  const lowerPrompt = promptText.toLowerCase();
+  const isTamilInput = /[\u0B80-\u0BFF]/.test(promptText);
+  const targetLang = (STATE.selectedLang === 'ta' || isTamilInput) ? 'ta' : 'en';
+  
+  for (const key in LOCAL_DATABASE) {
+    const entry = LOCAL_DATABASE[key];
+    const match = entry.keywords.some(kw => lowerPrompt.includes(kw));
+    if (match) {
+      return entry.answers[targetLang] || entry.answers.en;
+    }
+  }
+  return null;
+}
+
 // ==================== GEMINI API CONNECTION ====================
 async function processPrompt(promptText) {
   transitionTo('processing');
   
-  // If Force Offline is selected, simulate offline response
+  // 1. Intercept with local facts database for instant regional answers
+  const localAnswer = checkLocalDatabase(promptText);
+  if (localAnswer) {
+    console.log('[Local Database]: Match found. Bypassing API call.');
+    setTimeout(() => {
+      STATE.chatHistory.push({ role: 'user', text: promptText });
+      STATE.chatHistory.push({ role: 'bot', text: localAnswer });
+      
+      appendMessage('bot', localAnswer);
+      DOM.latencyVal.innerText = '0 ms (Local DB)';
+      speakResponseAndContinue(localAnswer);
+    }, 500);
+    return;
+  }
+  
+  // 2. If Force Offline is selected, simulate offline response
   if (!STATE.isOnlineMode) {
     setTimeout(() => {
       const offlineMsg = 'Offline Mode Active. Gemini connection skipped.';
