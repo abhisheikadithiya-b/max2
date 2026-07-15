@@ -494,6 +494,9 @@ function triggerProcessing() {
   if (!userPrompt) {
     console.log('[Active Session]: Empty prompt, resetting timers to continue listening.');
     resetListeningTimers();
+    if (STATE.activeRecognition && !STATE.recognitionActive && !STATE.micPermissionDenied) {
+      try { STATE.activeRecognition.start(); } catch(e){}
+    }
     return;
   }
   
@@ -669,6 +672,13 @@ function speakResponseAndContinue(text) {
     console.log('[Speaking Finished]: Transitioning back to active listening.');
     transitionTo('listening');
     resetListeningTimers();
+    if (STATE.activeRecognition && !STATE.recognitionActive && !STATE.micPermissionDenied) {
+      try {
+        STATE.activeRecognition.start();
+      } catch (e) {
+        console.warn('[Speech Engine restart after speech failed]:', e);
+      }
+    }
   });
 }
 
